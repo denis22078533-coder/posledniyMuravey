@@ -12,7 +12,7 @@ export function extractHtml(text: string): string | null {
   return null;
 }
 
-async function callLlmOnce(history: ChatMessage[]): Promise<string> {
+export async function callLlmOnce(history: ChatMessage[], systemPromptOverride?: string): Promise<string> {
   const s = getSettings();
   const cfg = getActiveProviderConfig(s);
   const { provider, apiKey, baseUrl, model } = cfg;
@@ -20,6 +20,8 @@ async function callLlmOnce(history: ChatMessage[]): Promise<string> {
 
   if (!apiKey) throw new Error(`Не задан API-ключ для ${provider}. Откройте «Мозг → ИИ» и введите ключ.`);
   if (!baseUrl) throw new Error(`Не задан Base URL для ${provider}. Откройте «Мозг → ИИ».`);
+
+  const finalSystemPrompt = systemPromptOverride ?? systemPrompt;
 
   const base = baseUrl.replace(/\/+$/, "");
   const isAnthropic = provider === "Claude";
@@ -34,10 +36,10 @@ async function callLlmOnce(history: ChatMessage[]): Promise<string> {
     headers["Authorization"] = `Bearer ${apiKey}`;
   }
 
-  const messages: ChatMessage[] = isAnthropic ? history : [{ role: "system", content: systemPrompt }, ...history];
+  const messages: ChatMessage[] = isAnthropic ? history : [{ role: "system", content: finalSystemPrompt }, ...history];
 
   const body: Record<string, unknown> = isAnthropic
-    ? { model, max_tokens: 4096, temperature: parseFloat(temperature) || 0.7, system: systemPrompt, messages: history }
+    ? { model, max_tokens: 4096, temperature: parseFloat(temperature) || 0.7, system: finalSystemPrompt, messages: history }
     : { model, temperature: parseFloat(temperature) || 0.7, messages, stream: false };
 
   const res = await fetch(url, { method: "POST", headers, body: JSON.stringify(body) });
@@ -78,10 +80,9 @@ export async function chat(
   const hasFiles = Object.keys(currentFiles).length > 0;
   let hop = 0;
 
-   
   while (true) {
     onProgress?.({ stage: "thinking" });
-    const text = await callLlmOnce(working);
+    const text = await callLlmOnce(working, s.ai.systemPrompt);
 
     // 1) WRITE: применяем сразу (даже если есть и READ) — это терминальное действие
     const writes = hasFiles ? extractWriteCommands(text) : [];
@@ -93,7 +94,6 @@ export async function chat(
       }
       onProgress?.({ stage: "writing", paths: applied });
       opts.onFilesChange?.(currentFiles);
-      // отдаём финальный ответ (с WRITE: блоками внутри — UI их вырежет)
       if (onDelta) onDelta(text);
       setSettings((cur) => ({ ...cur, tokens: Math.max(0, cur.tokens - 1) }));
       return text;

@@ -1,12 +1,12 @@
 import { useState, useRef, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import {
-  useSettings, getSettings, type AiProvider,
+  useSettings, getSettings, type AiProvider, getActiveProviderConfig,
   MODELS_BY_PROVIDER, PROVIDER_DEFAULTS,
   IMAGE_ENGINE_DEFAULTS, MEDIA_ENGINE_DEFAULTS,
   DESIGNER_PROMPT, ENGINEER_PROMPT, type PromptPreset,
 } from "@/lib/store";
-import { chat, extractHtml, type ChatMessage } from "@/lib/ai";
+import { chat, callLlmOnce, extractHtml, type ChatMessage } from "@/lib/ai";
 import {
   importZip, exportZip, findIndexHtml, loadFiles, saveFiles, filesContextForAi,
   loadMeta, saveMeta, clearProject, buildVirtualPreview, parsePackageDeps,
@@ -131,6 +131,7 @@ function TopBar() {
   const initials = session?.email ? session.email.slice(0, 2).toUpperCase() : "??";
   const roleColor = session?.role === "superadmin" ? "text-orange-400" : session?.role === "moderator" ? "text-purple-400" : "text-muted-foreground";
   const roleLabel = session?.role === "superadmin" ? "OWNER" : session?.role === "moderator" ? "MOD" : "USER";
+  const activeCfg = getActiveProviderConfig(s);
 
   return (
     <header className="sticky top-0 z-40 backdrop-blur-xl bg-background/70 border-b border-border">
@@ -147,8 +148,8 @@ function TopBar() {
 
         <div className="hidden md:flex items-center gap-4 text-xs">
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary border border-border">
-            <span className={`w-1.5 h-1.5 rounded-full ${s.ai.apiKey ? "bg-green-500" : "bg-muted-foreground"} animate-pulse-dot`} />
-            <span className="font-mono text-muted-foreground">{s.ai.provider} · {s.ai.model}</span>
+            <span className={`w-1.5 h-1.5 rounded-full ${activeCfg.apiKey ? "bg-green-500" : "bg-muted-foreground"} animate-pulse-dot`} />
+            <span className="font-mono text-muted-foreground">{activeCfg.provider} · {activeCfg.model}</span>
           </div>
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-secondary border border-border">
             <Icon name="Coins" size={12} className="text-orange-500" />
@@ -948,8 +949,9 @@ function AIPanel() {
 
   async function testConnection() {
     try {
+      const s = getSettings(); // get fresh settings
       toast.loading(`Проверяем ${s.ai.activeProvider}...`, { id: "test" });
-      await chat([{ role: "user", content: "Скажи коротко: «Подключение работает»." }]);
+      await callLlmOnce([{ role: "user", content: "Скажи коротко: «Подключение работает»." }]);
       toast.success("Подключение работает", { id: "test" });
     } catch (e: unknown) {
       toast.error(e instanceof Error ? e.message : "Не удалось", { id: "test" });
@@ -2077,14 +2079,26 @@ function Input({ placeholder, type = "text", mono, value, onChange }: {
   value?: string;
   onChange?: (v: string) => void;
 }) {
+  const [show, setShow] = useState(false);
+  const isPass = type === "password";
   return (
-    <input
-      type={type}
-      placeholder={placeholder}
-      value={value ?? ""}
-      onChange={(e) => onChange?.(e.target.value)}
-      className={`w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground/60 focus:border-purple-500/50 focus:outline-none transition ${mono ? "font-mono" : ""}`}
-    />
+    <div className="relative">
+      <input
+        type={isPass && !show ? "password" : "text"}
+        placeholder={placeholder}
+        value={value ?? ""}
+        onChange={(e) => onChange?.(e.target.value)}
+        className={`w-full bg-secondary border border-border rounded-lg px-3 py-2 text-sm placeholder:text-muted-foreground/60 focus:border-purple-500/50 focus:outline-none transition ${mono ? "font-mono" : ""} ${isPass ? "pr-10" : ""}`}
+      />
+      {isPass && (
+        <button
+          onClick={() => setShow(!show)}
+          className="absolute top-1/2 right-3 -translate-y-1/2 text-muted-foreground hover:text-foreground transition"
+        >
+          <Icon name={show ? "EyeOff" : "Eye"} size={14} />
+        </button>
+      )}
+    </div>
   );
 }
 
