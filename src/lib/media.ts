@@ -24,31 +24,19 @@ export async function generateImage(prompt: string, init?: { image?: string }): 
   const base = (img.baseUrl || "").replace(/\/+$/, "");
   if (!base) throw new Error("Не задан Base URL для Image API");
 
-  // ─ Kandinsky / FusionBrain (RU) ─
-  if (img.engine === "kandinsky") {
-    const headers = {
-      "X-Key": `Key ${img.apiKey.split(":")[0] || img.apiKey}`,
-      "X-Secret": `Secret ${img.apiKey.split(":")[1] || ""}`,
-    };
-    const fd = new FormData();
-    fd.append("model_id", img.model || "4");
-    fd.append("params", new Blob([JSON.stringify({ type: "GENERATE", numImages: 1, width: 1024, height: 1024, generateParams: { query: prompt } })], { type: "application/json" }));
-    const start = await fetch(`${base}/text2image/run`, { method: "POST", headers, body: fd });
-    if (!start.ok) throw new Error(`Kandinsky ${start.status}: ${(await start.text()).slice(0, 200)}`);
-    const job = await start.json();
-    const id = job?.uuid;
-    if (!id) throw new Error("Kandinsky: пустой uuid");
-    for (let i = 0; i < 30; i++) {
-      await new Promise((r) => setTimeout(r, 2000));
-      const r = await fetch(`${base}/text2image/status/${id}`, { headers });
-      const st = await r.json();
-      if (st?.status === "DONE" && st?.images?.[0]) {
-        return st.images[0].startsWith("data:") ? st.images[0] : `data:image/png;base64,${st.images[0]}`;
-      }
-      if (st?.status === "FAIL") throw new Error(`Kandinsky: ${st?.errorDescription || "сбой"}`);
+    if (img.engine === "kandinsky") {
+        const res = await fetch(`https://gigachat.devices.sberbank.ru/api/v1/chat/completions`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${img.apiKey}` },
+            body: JSON.stringify({ model: img.model || "GigaChat:latest", messages: [{role: "user", content: prompt}], temperature: 0.7, stream: false }),
+        });
+        if (!res.ok) throw new Error(`Kandinsky ${res.status}: ${(await res.text()).slice(0, 200)}`);
+        const data = await res.json();
+        const item = data?.choices?.[0]?.message?.content;
+        if (item) return item;
+        throw new Error("Пустой ответ от Kandinsky API");
     }
-    throw new Error("Kandinsky: таймаут генерации");
-  }
+
 
   // ─ YandexART ─
   if (img.engine === "yandexart") {
