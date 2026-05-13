@@ -115,7 +115,7 @@ export const MODELS_BY_PROVIDER: Record<AiProvider, string[]> = {
 export const IMAGE_ENGINE_DEFAULTS: Record<ImageEngine, { baseUrl: string; model: string; label: string }> = {
   replicate: { baseUrl: "https://api.replicate.com/v1", model: "black-forest-labs/flux-schnell", label: "Replicate (FLUX/SD)" },
   openai: { baseUrl: "https://api.openai.com/v1", model: "gpt-image-1", label: "OpenAI (DALL·E)" },
-  kandinsky: { baseUrl: "https://api-key.fusionbrain.ai/key/api/v1", model: "Kandinsky-3.1", label: "Kandinsky 🇷🇺" },
+  kandinsky: { baseUrl: "sberbank.ru", model: "Kandinsky-3.1", label: "Kandinsky 🇷🇺" },
   yandexart: { baseUrl: "https://llm.api.cloud.yandex.net/foundationModels/v1", model: "yandex-art/latest", label: "YandexART 🇷🇺" },
   custom: { baseUrl: "", model: "", label: "Свой шлюз" },
 };
@@ -220,7 +220,7 @@ export function getActiveProviderConfig(s: Settings = state): ProviderConfig & {
 export function useSettings() {
   const [, force] = useState(0);
   useEffect(() => {
-    const fn = () => force((n) => n + 1);
+    const fn = () => force((n: number) => n + 1);
     listeners.add(fn);
     return () => { listeners.delete(fn); };
   }, []);
