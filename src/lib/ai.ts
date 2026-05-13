@@ -1,4 +1,5 @@
 import { getSettings, setSettings, getActiveProviderConfig } from "./store";
+import { getCurrentAccount } from "./auth"; // Используем правильную функцию
 import { extractSearchCommand, searchWeb, formatResultsForLlm, extractReadCommands, extractWriteCommands } from "./search";
 import { readFileByPath, writeFileByPath, type ProjectFiles } from "./files";
 
@@ -10,6 +11,35 @@ export function extractHtml(text: string): string | null {
   const lower = text.toLowerCase();
   if (lower.includes("<!doctype") || lower.includes("<html")) return text.trim();
   return null;
+}
+
+async function nativeFs(operation: "read" | "write", path: string, content?: string): Promise<string | null> {
+  // Проверка прав ПЕРЕД отправкой запроса на сервер
+  const account = getCurrentAccount();
+  const settings = getSettings();
+  if (!settings.system.selfEdit || !account || account.role !== "superadmin") {
+    throw new Error("Доступ к редактированию файлов платформы запрещён.");
+  }
+
+  try {
+    const res = await fetch("/api/fs", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ operation, path, content }),
+    });
+    if (!res.ok) {
+      const errText = await res.text().catch(() => res.statusText);
+      throw new Error(`API error ${res.status}: ${errText}`);
+    }
+    if (operation === "read") {
+      const { content } = await res.json();
+      return content;
+    }
+    return null;
+  } catch (e) {
+    console.error(`[Native FS Error] ${operation} ${path}:`, e);
+    throw e;
+  }
 }
 
 export async function callLlmOnce(history: ChatMessage[], systemPromptOverride?: string): Promise<string> {
@@ -74,6 +104,7 @@ export async function chat(
 ): Promise<string> {
   const s = getSettings();
   const searchEnabled = s.ai.search.enabled && s.ai.search.autoMode;
+  const selfEditMode = s.system.selfEdit;
 
   let working: ChatMessage[] = [...history];
   let currentFiles: ProjectFiles = opts.files ? { ...opts.files } : {};
@@ -84,38 +115,67 @@ export async function chat(
     onProgress?.({ stage: "thinking" });
     const text = await callLlmOnce(working, s.ai.systemPrompt);
 
-    // 1) WRITE: применяем сразу (даже если есть и READ) — это терминальное действие
-    const writes = hasFiles ? extractWriteCommands(text) : [];
+    // 1) WRITE: применяем сразу
+    const writes = extractWriteCommands(text);
     if (writes.length > 0 && hop < MAX_HOPS) {
       const applied: string[] = [];
-      for (const w of writes) {
-        currentFiles = writeFileByPath(currentFiles, w.path, w.content);
-        applied.push(w.path);
+      try {
+        if (selfEditMode) {
+          for (const w of writes) {
+            await nativeFs("write", w.path, w.content);
+            applied.push(w.path);
+          }
+        } else if (hasFiles) {
+          for (const w of writes) {
+            currentFiles = writeFileByPath(currentFiles, w.path, w.content);
+            applied.push(w.path);
+          }
+          opts.onFilesChange?.(currentFiles);
+        }
+        if (applied.length > 0) onProgress?.({ stage: "writing", paths: applied });
+        if (onDelta) onDelta(text);
+        setSettings((cur) => ({ ...cur, tokens: Math.max(0, cur.tokens - 1) }));
+        return text; // Терминальное действие
+      } catch (e: any) {
+        console.error("WRITE error", e);
+        working.push({ role: "assistant", content: text });
+        working.push({ role: "user", content: `[SYSTEM] Ошибка при записи файла: ${e.message}. Сообщи пользователю.` });
+        hop += 1;
+        continue;
       }
-      onProgress?.({ stage: "writing", paths: applied });
-      opts.onFilesChange?.(currentFiles);
-      if (onDelta) onDelta(text);
-      setSettings((cur) => ({ ...cur, tokens: Math.max(0, cur.tokens - 1) }));
-      return text;
     }
 
-    // 2) READ: подгружаем содержимое файлов и продолжаем диалог
-    const reads = hasFiles ? extractReadCommands(text) : [];
+    // 2) READ: подгружаем содержимое и продолжаем
+    const reads = extractReadCommands(text);
     if (reads.length > 0 && hop < MAX_HOPS) {
       onProgress?.({ stage: "reading", paths: reads });
       const chunks: string[] = [];
-      for (const p of reads) {
-        const f = readFileByPath(currentFiles, p);
-        if (f) chunks.push(`--- ${f.path} (${f.content.length} b) ---\n${f.content.slice(0, 8000)}`);
-        else chunks.push(`--- ${p} ---\n[файл не найден в проекте]`);
+      try {
+        if (selfEditMode) {
+          for (const p of reads) {
+            const content = await nativeFs("read", p);
+            chunks.push(`--- ${p} ---\n${content !== null ? content.slice(0, 8000) : "[не удалось прочитать]"}`);
+          }
+        } else if (hasFiles) {
+          for (const p of reads) {
+            const f = readFileByPath(currentFiles, p);
+            chunks.push(`--- ${p} ---\n${f ? f.content.slice(0, 8000) : "[файл не найден в проекте]"}`);
+          }
+        } else {
+          chunks.push("[Чтение не активно, т.к. нет файлов в проекте и выключен self-edit режим]")
+        }
+
+        working.push({ role: "assistant", content: text });
+        working.push({ role: "user", content: `[Содержимое запрошенных файлов]\n\n${chunks.join("\n\n")}\n\nПродолжай. Для правок — WRITE.` });
+        hop += 1;
+        continue;
+      } catch (e: any) {
+        console.error("READ error", e);
+        working.push({ role: "assistant", content: text });
+        working.push({ role: "user", content: `[SYSTEM] Ошибка при чтении файла: ${e.message}. Сообщи пользователю.` });
+        hop += 1;
+        continue;
       }
-      working = [
-        ...working,
-        { role: "assistant", content: text },
-        { role: "user", content: `[Содержимое запрошенных файлов]\n\n${chunks.join("\n\n")}\n\nПродолжай выполнение задачи. Когда готов внести правки — используй формат:\nWRITE: путь/к/файлу.ext\n\`\`\`\nновое содержимое\n\`\`\`` },
-      ];
-      hop += 1;
-      continue;
     }
 
     // 3) SEARCH: интернет
