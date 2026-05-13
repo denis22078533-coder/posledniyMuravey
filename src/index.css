@@ -1,0 +1,284 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 4%;
+    --foreground: 0 0% 96%;
+
+    --card: 0 0% 6%;
+    --card-foreground: 0 0% 96%;
+
+    --popover: 0 0% 6%;
+    --popover-foreground: 0 0% 96%;
+
+    --primary: 270 95% 65%;
+    --primary-foreground: 0 0% 4%;
+
+    --secondary: 0 0% 10%;
+    --secondary-foreground: 0 0% 96%;
+
+    --muted: 0 0% 10%;
+    --muted-foreground: 0 0% 55%;
+
+    --accent: 22 100% 58%;
+    --accent-foreground: 0 0% 4%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 96%;
+
+    --border: 0 0% 12%;
+    --input: 0 0% 12%;
+    --ring: 270 95% 65%;
+
+    --radius: 0.75rem;
+
+    --purple: #a855f7;
+    --orange: #ff6b1a;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: "Roboto", sans-serif;
+  }
+  h1,
+  h2,
+  h3,
+  h4 {
+    font-family: "Oswald", sans-serif;
+    letter-spacing: -0.02em;
+  }
+  .font-mono {
+    font-family: "JetBrains Mono", monospace;
+  }
+}
+
+@layer utilities {
+  .grid-bg {
+    background-image:
+      linear-gradient(rgba(255, 255, 255, 0.025) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+  .glow-purple {
+    box-shadow: 0 0 40px -10px rgba(168, 85, 247, 0.5);
+  }
+  .glow-orange {
+    box-shadow: 0 0 40px -10px rgba(255, 107, 26, 0.5);
+  }
+  .text-gradient {
+    background: linear-gradient(135deg, #a855f7 0%, #ff6b1a 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+@keyframes pulseDot {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+/* Муравей-печатник: тело покачивается */
+@keyframes antBody {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-2px) rotate(2deg);
+  }
+}
+/* Лапки печатают */
+@keyframes antPaw1 {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  25% {
+    transform: translateY(-4px);
+  }
+}
+@keyframes antPaw2 {
+  0%,
+  100% {
+    transform: translateY(-4px);
+  }
+  25% {
+    transform: translateY(0);
+  }
+}
+/* Усики дёргаются */
+@keyframes antenna {
+  0%,
+  100% {
+    transform: rotate(-10deg);
+  }
+  50% {
+    transform: rotate(10deg);
+  }
+}
+/* Мерцание экрана */
+@keyframes screenFlicker {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+/* Курсор печатает */
+@keyframes typingCursor {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+/* Плавающий муравей на фоне */
+@keyframes bgAntFloat {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+  25% {
+    transform: translate(20px, -15px) rotate(5deg);
+  }
+  50% {
+    transform: translate(40px, 0) rotate(-3deg);
+  }
+  75% {
+    transform: translate(20px, 15px) rotate(2deg);
+  }
+  100% {
+    transform: translate(0, 0) rotate(0deg);
+  }
+}
+/* Бегущие точки кода */
+@keyframes codeRain {
+  0% {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  10% {
+    opacity: 0.4;
+  }
+  90% {
+    opacity: 0.4;
+  }
+  100% {
+    transform: translateY(100vh);
+    opacity: 0;
+  }
+}
+
+.animate-fade-up {
+  animation: fadeUp 0.5s ease both;
+}
+.animate-slide-up {
+  animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.animate-pulse-dot {
+  animation: pulseDot 2s ease-in-out infinite;
+}
+.animate-ant-body {
+  animation: antBody 0.6s ease-in-out infinite;
+  transform-origin: center bottom;
+}
+.animate-ant-paw1 {
+  animation: antPaw1 0.3s ease-in-out infinite;
+}
+.animate-ant-paw2 {
+  animation: antPaw2 0.3s ease-in-out infinite;
+}
+.animate-antenna-l {
+  animation: antenna 0.5s ease-in-out infinite;
+  transform-origin: bottom right;
+}
+.animate-antenna-r {
+  animation: antenna 0.5s ease-in-out infinite reverse;
+  transform-origin: bottom left;
+}
+.animate-screen {
+  animation: screenFlicker 1.2s ease-in-out infinite;
+}
+.animate-cursor {
+  animation: typingCursor 0.8s steps(1) infinite;
+}
+.animate-bg-ant {
+  animation: bgAntFloat 18s ease-in-out infinite;
+}
+.animate-code-rain {
+  animation: codeRain linear infinite;
+}
+
+.delay-50 {
+  animation-delay: 50ms;
+}
+.delay-100 {
+  animation-delay: 100ms;
+}
+.delay-150 {
+  animation-delay: 150ms;
+}
+.delay-200 {
+  animation-delay: 200ms;
+}
+.delay-300 {
+  animation-delay: 300ms;
+}
+.delay-400 {
+  animation-delay: 400ms;
+}
