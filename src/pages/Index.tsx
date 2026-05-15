@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import Icon from "@/components/ui/icon";
 import {
@@ -31,7 +32,7 @@ import {
 } from "@/lib/integrations";
 
 type Tab = "chat" | "core" | "projects";
-type CoreTab = "ai" | "github" | "payments" | "system" | "logs" | "users" | "dialogs" | "integrations";
+type CoreTab = "ai" | "github" | "payments" | "system" | "logs" | "users" | "dialogs" | "integrations" | "regru";
 type Device = "desktop" | "mobile";
 type Msg = {
   role: "user" | "ai";
@@ -860,6 +861,7 @@ function CoreTab() {
   const subTabs: { id: CoreTab; label: string; icon: string; owner?: boolean; badge?: number }[] = [
     { id: "ai", label: "Движок", icon: "Brain", owner: true },
     { id: "github", label: "GitHub", icon: "Github" },
+    { id: "regru", label: "Удаленный Сервер (Reg.ru)", icon: "Server", owner: true },
     { id: "payments", label: "Платежи", icon: "CreditCard", owner: true },
     { id: "system", label: "Система", icon: "Settings", owner: true },
     { id: "logs", label: "Логи", icon: "ScrollText" },
@@ -896,12 +898,50 @@ function CoreTab() {
 
       {sub === "ai" && isOwner && <AIPanel />}
       {sub === "github" && <GitHubPanel />}
+      {sub === "regru" && isOwner && <RegRuPanel />}
       {sub === "payments" && isOwner && <PaymentsPanel />}
       {sub === "system" && isOwner && <SystemPanel />}
       {sub === "logs" && <LogsPanel />}
       {sub === "users" && isOwner && <UsersPanel />}
       {sub === "dialogs" && <DialogsPanel />}
       {sub === "integrations" && isOwner && <IntegrationsPanel />}
+    </div>
+  );
+}
+
+function RegRuPanel() {
+  const [s, set] = useSettings();
+
+  return (
+    <div className="space-y-4 animate-fade-up">
+      <Card title="Удаленный Сервер (Reg.ru)" accent="purple">
+        <div className="grid md:grid-cols-2 gap-4">
+          <Field label="Сервер API URL">
+            <Input
+              value={s.regru.serverUrl}
+              onChange={(v) => set((c) => ({ ...c, regru: { ...c.regru, serverUrl: v } }))}
+              placeholder="http://89.108.88"
+              mono
+            />
+          </Field>
+          <Field label="Логин SSH/SFTP">
+            <Input
+              value={s.regru.login}
+              onChange={(v) => set((c) => ({ ...c, regru: { ...c.regru, login: v } }))}
+              placeholder="root"
+              mono
+            />
+          </Field>
+          <Field label="Пароль Root">
+            <Input
+              value={s.regru.password}
+              onChange={(v) => set((c) => ({ ...c, regru: { ...c.regru, password: v } }))}
+              type="password"
+              mono
+            />
+          </Field>
+        </div>
+      </Card>
     </div>
   );
 }
@@ -1665,9 +1705,7 @@ function LogsPanel() {
               }`}>{e.role}</span>
               <span className="text-muted-foreground truncate min-w-0 flex-shrink-0 w-40">{e.email}</span>
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-background text-purple-300 whitespace-nowrap">{e.intent}</span>
-              <span className={`flex-1 truncate ${e.blocked ? "text-red-400" : "text-foreground"}`}>
-                {e.blocked ? `🚫 ${e.reason} · ` : ""}{e.text}
-              </span>
+              <span className={`flex-1 truncate ${e.blocked ? "text-red-400" : ""}`}>{e.blocked ? `🚫 ${e.reason} · ` : ""}{e.text}</span>
             </div>
           ))}
         </div>
@@ -2126,5 +2164,3 @@ function Toggle({ label, hint, on, setOn, color }: {
     </div>
   );
 }
-
-

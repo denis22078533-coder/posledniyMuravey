@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from "react";
 
 const KEY = "muravey_settings_v2";
@@ -70,6 +71,11 @@ export type Settings = {
     siteUrl: string;
     branch: string;
     proxy: string;
+  };
+  regru: {
+    serverUrl: string;
+    login: string;
+    password: string;
   };
   payments: {
     terminalKey: string;
@@ -160,6 +166,7 @@ export const DEFAULT_SETTINGS: Settings = {
     },
   },
   github: { token: "", repo: "", siteUrl: "", branch: "main", proxy: "" },
+  regru: { serverUrl: "", login: "", password: "" },
   payments: { terminalKey: "", password: "" },
   system: { selfEdit: false, publicAi: true },
   supabase: { url: "", anonKey: "", serviceKey: "" },
@@ -188,6 +195,7 @@ function load(): Settings {
         search: { ...DEFAULT_SETTINGS.ai.search, ...((parsed.ai && parsed.ai.search) || {}) },
       },
       github: { ...DEFAULT_SETTINGS.github, ...(parsed.github || {}) },
+      regru: { ...DEFAULT_SETTINGS.regru, ...(parsed.regru || {}) },
       payments: { ...DEFAULT_SETTINGS.payments, ...(parsed.payments || {}) },
       system: { ...DEFAULT_SETTINGS.system, ...(parsed.system || {}) },
       supabase: { ...DEFAULT_SETTINGS.supabase, ...(parsed.supabase || {}) },

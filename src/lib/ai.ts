@@ -1,3 +1,4 @@
+
 import { getSettings, setSettings, getActiveProviderConfig } from "./store";
 import { getCurrentAccount } from "./auth"; // Используем правильную функцию
 import { extractSearchCommand, searchWeb, formatResultsForLlm, extractReadCommands, extractWriteCommands } from "./search";
@@ -21,8 +22,11 @@ async function nativeFs(operation: "read" | "write", path: string, content?: str
     throw new Error("Доступ к редактированию файлов платформы запрещён.");
   }
 
+  const remoteUrl = settings.regru.serverUrl;
+  const url = remoteUrl ? `${remoteUrl}/api/fs` : "/api/fs";
+
   try {
-    const res = await fetch("/api/fs", {
+    const res = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ operation, path, content }),
