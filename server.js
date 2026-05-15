@@ -1,7 +1,7 @@
-const express = require('express');
-const fs = require('fs');
-const path = require('path');
-const cors = require('cors');
+import express from 'express';
+import fs from 'fs';
+import path from 'path';
+import cors from 'cors';
 
 const app = express();
 const port = 3001;
