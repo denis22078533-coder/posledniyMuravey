@@ -4,7 +4,7 @@ import path from 'path';
 import cors from 'cors';
 
 const app = express();
-const port = 3001;
+const port = 80;
 
 // Разрешаем CORS-запросы с любого источника для простоты разработки
 app.use(cors());
