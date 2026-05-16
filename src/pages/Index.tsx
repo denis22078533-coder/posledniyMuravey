@@ -911,20 +911,48 @@ function CoreTab() {
 
 function RegRuPanel() {
   const [s, set] = useSettings();
+  const [loading, setLoading] = useState(false);
+
+  async function handleDeploy() {
+    const { serverUrl, login, password } = s.regru;
+    if (!serverUrl || !login || !password) {
+      return toast.error("Заполните все поля: URL, логин и пароль");
+    }
+    setLoading(true);
+    toast.loading("Устанавливаю связь с Рег.облаком...", { id: "deploy" });
+    try {
+      const response = await fetch("/api/deploy-remote", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ host: serverUrl, username: login, password }),
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.message || "Неизвестная ошибка сервера");
+      }
+      toast.success("Связь установлена! Сервер на Рег.облаке успешно запущен на порту 80.", { id: "deploy", duration: 6000 });
+      console.log("Логи запуска:", data.logs);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : "Ошибка при запросе";
+      toast.error(msg, { id: "deploy" });
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <div className="space-y-4 animate-fade-up">
       <Card title="Удаленный Сервер (Reg.ru)" accent="purple">
         <div className="grid md:grid-cols-2 gap-4">
-          <Field label="Сервер API URL">
+          <Field label="IP-адрес сервера">
             <Input
               value={s.regru.serverUrl}
               onChange={(v) => set((c) => ({ ...c, regru: { ...c.regru, serverUrl: v } }))}
-              placeholder="http://89.108.88"
+              placeholder="89.108.88.207"
               mono
             />
           </Field>
-          <Field label="Логин SSH/SFTP">
+          <Field label="Логин SSH">
             <Input
               value={s.regru.login}
               onChange={(v) => set((c) => ({ ...c, regru: { ...c.regru, login: v } }))}
@@ -932,7 +960,7 @@ function RegRuPanel() {
               mono
             />
           </Field>
-          <Field label="Пароль Root">
+          <Field label="Пароль SSH">
             <Input
               value={s.regru.password}
               onChange={(v) => set((c) => ({ ...c, regru: { ...c.regru, password: v } }))}
@@ -940,6 +968,16 @@ function RegRuPanel() {
               mono
             />
           </Field>
+        </div>
+        <div className="mt-4 border-t border-border pt-4 flex justify-end">
+          <button
+            onClick={handleDeploy}
+            disabled={loading}
+            className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-gradient-to-r from-purple-500 to-orange-500 text-black text-sm font-bold hover:opacity-90 transition disabled:opacity-60"
+          >
+            {loading ? <Icon name="Loader" size={14} className="animate-spin" /> : <Icon name="Rocket" size={14} />}
+            {loading ? "Запускаю..." : "Обновить и запустить Рег.облако"}
+          </button>
         </div>
       </Card>
     </div>
@@ -1154,8 +1192,7 @@ function AIPanel() {
                   onClick={() => set((c) => ({ ...c, ai: { ...c.ai, search: { ...c.ai.search, enabled: opt.id } } }))}
                   className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium border transition ${
                     s.ai.search.enabled === opt.id ? "bg-orange-500/10 border-orange-500/50 text-orange-300" : "bg-secondary border-border text-muted-foreground hover:text-foreground"
-                  }`}
-                >{opt.label}</button>
+                  }`}>{opt.label}</button>
               ))}
             </div>
           </Field>
@@ -1171,8 +1208,7 @@ function AIPanel() {
                   onClick={() => set((c) => ({ ...c, ai: { ...c.ai, search: { ...c.ai.search, engine: opt.id } } }))}
                   className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium border transition ${
                     s.ai.search.engine === opt.id ? "bg-orange-500/10 border-orange-500/50 text-orange-300" : "bg-secondary border-border text-muted-foreground hover:text-foreground"
-                  }`}
-                >{opt.label}</button>
+                  }`}>{opt.label}</button>
               ))}
             </div>
           </Field>
@@ -1210,8 +1246,7 @@ function AIPanel() {
               title={p.desc}
               className={`flex-1 px-3 py-2 rounded-lg text-xs font-medium border transition ${
                 s.ai.promptPreset === p.id ? "bg-purple-500/10 border-purple-500/50 text-purple-300" : "bg-secondary border-border text-muted-foreground hover:text-foreground"
-              }`}
-            >{p.label}</button>
+              }`}>{p.label}</button>
           ))}
         </div>
         <textarea
@@ -1408,7 +1443,9 @@ function PaymentsPanel() {
           <div className="aspect-square rounded-xl border border-border bg-secondary p-4 flex items-center justify-center">
             <div className="grid grid-cols-8 gap-0.5 w-full h-full">
               {Array.from({ length: 64 }).map((_, i) => (
-                <div key={i} className={`rounded-[1px] ${(i * 37) % 5 < 3 ? "bg-foreground" : "bg-transparent"}`} />
+                <div key={i} className={`rounded-[1px] ${
+                  (i * 37) % 5 < 3 ? "bg-foreground" : "bg-transparent"
+                }`} />
               ))}
             </div>
           </div>
@@ -1420,12 +1457,10 @@ function PaymentsPanel() {
             <div className="flex gap-2">
               <button
                 onClick={() => { set((c) => ({ ...c, tokens: c.tokens + 5000 })); toast.success("Зачислено 5 000 токенов"); }}
-                className="px-3 py-2 rounded-lg bg-secondary border border-border text-xs hover:bg-foreground hover:text-background transition"
-              >Симулировать оплату</button>
+                className="px-3 py-2 rounded-lg bg-secondary border border-border text-xs hover:bg-foreground hover:text-background transition">Симулировать оплату</button>
               <button
                 onClick={() => { navigator.clipboard.writeText("https://qr.nspk.ru/demo-muravey"); toast.success("Ссылка скопирована"); }}
-                className="px-3 py-2 rounded-lg bg-secondary border border-border text-xs hover:bg-foreground hover:text-background transition"
-              >Копировать ссылку</button>
+                className="px-3 py-2 rounded-lg bg-secondary border border-border text-xs hover:bg-foreground hover:text-background transition">Копировать ссылку</button>
             </div>
           </div>
         </div>
