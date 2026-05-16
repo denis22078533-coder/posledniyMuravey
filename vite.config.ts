@@ -11,8 +11,11 @@ export default defineConfig({
     },
   },
   server: {
+    port: 9000,
+    watch: {
+      ignored: ['**/node_modules/**', '**/dist/**']
+    },
     host: "0.0.0.0",
-    port: 5173,
     allowedHosts: true,
     hmr: {
       timeout: 7000,
