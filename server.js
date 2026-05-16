@@ -47,38 +47,46 @@ app.post('/api/deploy-remote', (req, res) => {
   const { host, username, password } = req.body;
 
   if (!host || !username || !password) {
-    return res.status(400).send({ message: 'Необходимы хост, имя пользователя и пароль.' });
+    return res.status(400).json({ message: 'Необходимы хост, имя пользователя и пароль.', logs: [] });
   }
 
   const conn = new Client();
   const command = 'cd /root && npm install && npm install -g pm2 && pm2 restart muravey-backend || pm2 start server.js --name "muravey-backend" --watch';
+  const outputArray = [];
   
   conn.on('ready', () => {
+    outputArray.push('✅ SSH-соединение установлено.');
     console.log('SSH-соединение установлено.');
     conn.exec(command, (err, stream) => {
       if (err) {
+        outputArray.push(`❌ Ошибка выполнения команды: ${err.message}`);
         console.error('Ошибка выполнения команды:', err);
-        return res.status(500).send({ message: 'Ошибка выполнения команды на сервере.', error: err.message });
+        return res.status(500).json({ message: 'Ошибка выполнения команды на сервере.', error: err.message, logs: outputArray });
       }
 
-      let output = '';
       stream.on('close', (code) => {
+        outputArray.push(`🏁 Команда завершена с кодом: ${code}`);
         console.log('Команда завершена с кодом:', code);
         conn.end();
         if (code === 0) {
-          res.status(200).send({ message: 'Сервер на Рег.облаке успешно запущен/перезапущен.', logs: output });
+          res.status(200).json({ message: 'Сервер на Рег.облаке успешно запущен/перезапущен.', logs: outputArray });
         } else {
-          res.status(500).send({ message: `Команда завершилась с ошибкой (код: ${code}).`, logs: output });
+          res.status(500).json({ message: `Команда завершилась с ошибкой (код: ${code}).`, logs: outputArray });
         }
       }).on('data', (data) => {
-        output += data.toString();
+        const chunk = data.toString().trim();
+        outputArray.push(chunk);
+        console.log('STDOUT:', chunk);
       }).stderr.on('data', (data) => {
-        output += data.toString();
+        const chunk = data.toString().trim();
+        outputArray.push(`[STDERR] ${chunk}`);
+        console.error('STDERR:', chunk);
       });
     });
   }).on('error', (err) => {
+    outputArray.push(`❌ Ошибка SSH-соединения: ${err.message}`);
     console.error('Ошибка SSH-соединения:', err);
-    res.status(500).send({ message: 'Не удалось подключиться к серверу.', error: err.message });
+    res.status(500).json({ message: 'Не удалось подключиться к серверу.', error: err.message, logs: outputArray });
   }).connect({
     host,
     port: 22,
